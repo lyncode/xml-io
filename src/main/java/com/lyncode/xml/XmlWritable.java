@@ -18,6 +18,6 @@ package com.lyncode.xml;
 
 import com.lyncode.xml.exceptions.XmlWriteException;
 
-public interface XmlWritable<T> {
+public interface XmlWritable {
     void write (XmlWriter writer) throws XmlWriteException;
 }
