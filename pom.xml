@@ -7,7 +7,7 @@
         <version>7</version>
     </parent>
 
-    <groupId>com.lyncode.xml</groupId>
+    <groupId>com.lyncode</groupId>
     <artifactId>xml-io</artifactId>
     <packaging>jar</packaging>
     <version>1.0.2-SNAPSHOT</version>
