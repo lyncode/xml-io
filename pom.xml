@@ -10,7 +10,7 @@
     <groupId>com.lyncode</groupId>
     <artifactId>xml-io</artifactId>
     <packaging>jar</packaging>
-    <version>1.0.2</version>
+    <version>1.0.3-SNAPSHOT</version>
     <name>XML IO Commons</name>
 
 
