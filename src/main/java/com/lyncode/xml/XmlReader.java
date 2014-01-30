@@ -16,9 +16,12 @@
 
 package com.lyncode.xml;
 
+import com.lyncode.test.matchers.extractor.ExtractFunction;
 import com.lyncode.xml.exceptions.XmlReaderException;
 import org.codehaus.stax2.XMLInputFactory2;
+import org.hamcrest.Matcher;
 
+import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -29,60 +32,55 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import static com.lyncode.xml.matchers.XmlEventMatchers.isText;
+import static org.hamcrest.CoreMatchers.anyOf;
+import static org.hamcrest.core.IsCollectionContaining.hasItem;
+
 public class XmlReader {
     private static final XMLInputFactory XML_INPUT_FACTORY = XMLInputFactory2.newFactory();
     private final XMLEventReader xmlEventParser;
 
-    public XmlReader(InputStream stream) throws XMLStreamException {
-        this.xmlEventParser = XML_INPUT_FACTORY.createXMLEventReader(stream);
+    public XmlReader(InputStream stream) throws XmlReaderException {
+        try {
+            this.xmlEventParser = XML_INPUT_FACTORY.createXMLEventReader(stream);
+        } catch (XMLStreamException e) {
+            throw new XmlReaderException(e);
+        }
     }
 
-
-    public boolean isStart() throws XmlReaderException {
-        return getPeek().isStartElement();
+    public boolean current (Matcher<XMLEvent> matcher) throws XmlReaderException {
+        return matcher.matches(getPeek());
     }
 
-    public boolean isEnd() throws XmlReaderException {
-        return getPeek().isEndElement();
-    }
-
-    public boolean isText() throws XmlReaderException {
-        return getPeek().isCharacters();
+    public void close () throws XmlReaderException {
+        try {
+            xmlEventParser.close();
+        } catch (XMLStreamException e) {
+            throw new XmlReaderException(e);
+        }
     }
 
 
     public String getText() throws XmlReaderException {
-        if (isText())
+        if (current(isText()))
             return getPeek().asCharacters().getData();
         else
-            return null;
+            throw new XmlReaderException("Current element is not text");
     }
 
-    public boolean hasName(String name) throws XmlReaderException {
+    public boolean hasName (Matcher<QName> matcher) throws XmlReaderException {
         if (getPeek().isStartElement())
-            return getPeek().asStartElement().getName().getLocalPart().equals(name);
+            return matcher.matches(getPeek().asStartElement().getName());
         else
-            return getPeek().asEndElement().getName().getLocalPart().equals(name);
+            return matcher.matches(getPeek().asEndElement().getName());
     }
 
-    public boolean hasAttribute(String name) throws XmlReaderException {
+    public String getAttributeValue(Matcher<QName> nameMatcher) throws XmlReaderException {
         if (getPeek().isStartElement()) {
-            Iterator<Attribute> attributes = getPeek().asStartElement().getAttributes();
+            Iterator attributes = getPeek().asStartElement().getAttributes();
             while (attributes.hasNext()) {
-                if (attributes.next().getName().getLocalPart().equals(name))
-                    return true;
-            }
-
-        }
-        return false;
-    }
-
-    public String getAttribute(String name) throws XmlReaderException {
-        if (getPeek().isStartElement()) {
-            Iterator<Attribute> attributes = getPeek().asStartElement().getAttributes();
-            while (attributes.hasNext()) {
-                Attribute attribute = attributes.next();
-                if (attribute.getName().getLocalPart().equals(name))
+                Attribute attribute = (Attribute) attributes.next();
+                if (nameMatcher.matches(attribute.getName()))
                     return attribute.getValue();
             }
 
@@ -90,35 +88,27 @@ public class XmlReader {
         return null;
     }
 
-    public Map<String, String> getAttributes() throws XmlReaderException {
-        HashMap<String, String> map = new HashMap<String, String>();
+    public <T> Map<T, String> getAttributes(ExtractFunction<QName, T> extractFunction) throws XmlReaderException {
+        HashMap<T, String> map = new HashMap<T, String>();
         if (getPeek().isStartElement()) {
-            Iterator<Attribute> attributes = getPeek().asStartElement().getAttributes();
+            Iterator attributes = getPeek().asStartElement().getAttributes();
             while (attributes.hasNext()) {
-                Attribute attribute = attributes.next();
-                map.put(attribute.getName().getLocalPart(), attribute.getValue());
+                Attribute attribute = (Attribute) attributes.next();
+                map.put(extractFunction.apply(attribute.getName()), attribute.getValue());
             }
         }
         return map;
     }
 
-    public boolean nextStartElement() throws XmlReaderException {
-        try {
-            xmlEventParser.nextEvent();
-            while (!getPeek().isStartElement() && !getPeek().isEndDocument())
-                xmlEventParser.nextEvent();
-            return getPeek().isStartElement();
-        } catch (XMLStreamException e) {
-            throw new XmlReaderException(e);
-        }
+    public boolean hasAttribute (Matcher<Attribute> matcher) throws XmlReaderException {
+        return hasItem(matcher).matches(getPeek().asStartElement().getAttributes());
     }
 
-    public boolean nextElement() throws XmlReaderException {
+    public void untilNext (Matcher<XMLEvent>... eventMatcher) throws XmlReaderException {
         try {
             xmlEventParser.nextEvent();
-            while (!getPeek().isStartElement() && !getPeek().isEndElement() && !getPeek().isEndDocument())
+            while (!anyOf(eventMatcher).matches(getPeek()))
                 xmlEventParser.nextEvent();
-            return getPeek().isStartElement() || getPeek().isEndElement();
         } catch (XMLStreamException e) {
             throw new XmlReaderException(e);
         }
