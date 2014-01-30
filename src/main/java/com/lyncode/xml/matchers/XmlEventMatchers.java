@@ -26,7 +26,7 @@ import javax.xml.namespace.QName;
 import javax.xml.stream.events.XMLEvent;
 
 public class XmlEventMatchers {
-    public static Matcher<XMLEvent> isText () {
+    public static Matcher<XMLEvent> text () {
         return new TypeSafeMatcher<XMLEvent>() {
             @Override
             protected boolean matchesSafely(XMLEvent item) {
@@ -40,7 +40,7 @@ public class XmlEventMatchers {
         };
     }
 
-    public static Matcher<XMLEvent> isAStartElement () {
+    public static Matcher<XMLEvent> aStartElement () {
         return new TypeSafeMatcher<XMLEvent>() {
             @Override
             protected boolean matchesSafely(XMLEvent item) {
@@ -54,7 +54,7 @@ public class XmlEventMatchers {
         };
     }
 
-    public static Matcher<XMLEvent> isAnEndElement () {
+    public static Matcher<XMLEvent> anEndElement () {
         return new TypeSafeMatcher<XMLEvent>() {
             @Override
             protected boolean matchesSafely(XMLEvent item) {
@@ -68,7 +68,7 @@ public class XmlEventMatchers {
         };
     }
 
-    public static Matcher<XMLEvent> isTheEndOfDocument () {
+    public static Matcher<XMLEvent> theEndOfDocument () {
         return new TypeSafeMatcher<XMLEvent>() {
             @Override
             protected boolean matchesSafely(XMLEvent item) {
@@ -82,7 +82,7 @@ public class XmlEventMatchers {
         };
     }
 
-    public static Matcher<XMLEvent> isTheStartOfDocument () {
+    public static Matcher<XMLEvent> theStartOfDocument () {
         return new TypeSafeMatcher<XMLEvent>() {
             @Override
             protected boolean matchesSafely(XMLEvent item) {
@@ -100,7 +100,7 @@ public class XmlEventMatchers {
         return new TypeSafeMatcher<XMLEvent>() {
             @Override
             protected boolean matchesSafely(XMLEvent item) {
-                return isAStartElement().matches(item) && item.asStartElement().getAttributes().hasNext();
+                return aStartElement().matches(item) && item.asStartElement().getAttributes().hasNext();
             }
 
             @Override
