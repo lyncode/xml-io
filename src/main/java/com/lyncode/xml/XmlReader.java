@@ -32,7 +32,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import static com.lyncode.xml.matchers.XmlEventMatchers.isText;
+import static com.lyncode.xml.matchers.XmlEventMatchers.text;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.core.IsCollectionContaining.hasItem;
 
@@ -62,7 +62,7 @@ public class XmlReader {
 
 
     public String getText() throws XmlReaderException {
-        if (current(isText()))
+        if (current(text()))
             return getPeek().asCharacters().getData();
         else
             throw new XmlReaderException("Current element is not text");
@@ -104,11 +104,13 @@ public class XmlReader {
         return hasItem(matcher).matches(getPeek().asStartElement().getAttributes());
     }
 
-    public void untilNext (Matcher<XMLEvent>... eventMatcher) throws XmlReaderException {
+    public boolean untilNext (Matcher<XMLEvent> eventMatcher, Matcher<XMLEvent> foundIsMatcher) throws XmlReaderException {
         try {
             xmlEventParser.nextEvent();
             while (!anyOf(eventMatcher).matches(getPeek()))
                 xmlEventParser.nextEvent();
+
+            return foundIsMatcher.matches(foundIsMatcher);
         } catch (XMLStreamException e) {
             throw new XmlReaderException(e);
         }

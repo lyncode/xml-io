@@ -25,6 +25,8 @@ import org.hamcrest.TypeSafeMatcher;
 import javax.xml.namespace.QName;
 import javax.xml.stream.events.XMLEvent;
 
+import static org.hamcrest.core.AnyOf.anyOf;
+
 public class XmlEventMatchers {
     public static Matcher<XMLEvent> text () {
         return new TypeSafeMatcher<XMLEvent>() {
@@ -94,6 +96,14 @@ public class XmlEventMatchers {
                 description.appendText("is start element");
             }
         };
+    }
+
+    public static Matcher<XMLEvent> anElement () {
+        return anyOf(aStartElement(), anEndElement());
+    }
+
+    public static Matcher<XMLEvent> anElementOr (Matcher<XMLEvent> matcher) {
+        return anyOf(aStartElement(), anEndElement(), matcher);
     }
 
     public static Matcher<XMLEvent> hasAttributes () {
