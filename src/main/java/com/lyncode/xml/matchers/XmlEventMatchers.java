@@ -65,7 +65,7 @@ public class XmlEventMatchers {
 
             @Override
             public void describeTo(Description description) {
-                description.appendText("is start element");
+                description.appendText("is end element");
             }
         };
     }
@@ -79,7 +79,7 @@ public class XmlEventMatchers {
 
             @Override
             public void describeTo(Description description) {
-                description.appendText("is start element");
+                description.appendText("is the end of the document");
             }
         };
     }
@@ -93,7 +93,7 @@ public class XmlEventMatchers {
 
             @Override
             public void describeTo(Description description) {
-                description.appendText("is start element");
+                description.appendText("is the start of the document");
             }
         };
     }
@@ -128,7 +128,7 @@ public class XmlEventMatchers {
         return new ExtractFunction<XMLEvent, QName>() {
             @Override
             public QName apply(XMLEvent input) {
-                if (input.isStartDocument()) return input.asStartElement().getName();
+                if (input.isStartElement()) return input.asStartElement().getName();
                 else if (input.isEndElement()) return input.asEndElement().getName();
                 else return null;
             }

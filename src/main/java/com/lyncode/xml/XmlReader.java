@@ -19,22 +19,28 @@ package com.lyncode.xml;
 import com.lyncode.test.matchers.extractor.ExtractFunction;
 import com.lyncode.xml.exceptions.XmlReaderException;
 import org.codehaus.stax2.XMLInputFactory2;
+import org.hamcrest.Description;
 import org.hamcrest.Matcher;
+import org.hamcrest.TypeSafeMatcher;
 
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
+import javax.xml.stream.events.Namespace;
+import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import static com.lyncode.xml.matchers.XmlEventMatchers.aStartElement;
 import static com.lyncode.xml.matchers.XmlEventMatchers.text;
 import static org.hamcrest.CoreMatchers.anyOf;
-import static org.hamcrest.core.IsCollectionContaining.hasItem;
+import static org.hamcrest.CoreMatchers.not;
 
 public class XmlReader {
     private static final XMLInputFactory XML_INPUT_FACTORY = XMLInputFactory2.newFactory();
@@ -60,19 +66,19 @@ public class XmlReader {
         }
     }
 
+    public QName getName () throws XmlReaderException {
+        if (getPeek().isStartElement())
+            return getPeek().asStartElement().getName();
+        else if (getPeek().isEndElement())
+            return getPeek().asEndElement().getName();
+        else throw new XmlReaderException("Current event has no name");
+    }
 
     public String getText() throws XmlReaderException {
         if (current(text()))
             return getPeek().asCharacters().getData();
         else
             throw new XmlReaderException("Current element is not text");
-    }
-
-    public boolean hasName (Matcher<QName> matcher) throws XmlReaderException {
-        if (getPeek().isStartElement())
-            return matcher.matches(getPeek().asStartElement().getName());
-        else
-            return matcher.matches(getPeek().asEndElement().getName());
     }
 
     public String getAttributeValue(Matcher<QName> nameMatcher) throws XmlReaderException {
@@ -100,20 +106,41 @@ public class XmlReader {
         return map;
     }
 
-    public boolean hasAttribute (Matcher<Attribute> matcher) throws XmlReaderException {
-        return hasItem(matcher).matches(getPeek().asStartElement().getAttributes());
+    public boolean hasAttribute (final Matcher<Attribute> matcher) throws XmlReaderException {
+        return hasAttributeMatcher(matcher).matches(getPeek().asStartElement().getAttributes());
     }
 
-    public boolean untilNext (Matcher<XMLEvent> eventMatcher, Matcher<XMLEvent> foundIsMatcher) throws XmlReaderException {
+    private TypeSafeMatcher<Iterator> hasAttributeMatcher(final Matcher<Attribute> matcher) {
+        return new TypeSafeMatcher<Iterator>() {
+            @Override
+            public void describeTo(Description description) {
+                description.appendText("has attribute");
+            }
+
+            @Override
+            protected boolean matchesSafely(Iterator item) {
+                while (item.hasNext())
+                    if (matcher.matches(item.next()))
+                        return true;
+                return false;
+            }
+        };
+    }
+
+    public XmlReader next(Matcher<XMLEvent>... possibleEvents) throws XmlReaderException {
         try {
             xmlEventParser.nextEvent();
-            while (!anyOf(eventMatcher).matches(getPeek()))
+            while (!anyOf(possibleEvents).matches(getPeek()))
                 xmlEventParser.nextEvent();
 
-            return foundIsMatcher.matches(foundIsMatcher);
+            return this;
         } catch (XMLStreamException e) {
             throw new XmlReaderException(e);
         }
+    }
+
+    public <T> T get (IslandParser<T> islandParser) throws XmlReaderException {
+        return islandParser.parse(this);
     }
 
     private XMLEvent getPeek() throws XmlReaderException {
@@ -122,5 +149,62 @@ public class XmlReader {
         } catch (XMLStreamException e) {
             throw new XmlReaderException(e);
         }
+    }
+
+    public String retrieveCurrentAsString () throws XmlReaderException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        try {
+            if (current(not(aStartElement())))
+                throw new XmlReaderException("Can only retrieve from starting elements");
+            XmlWriter writer = new XmlWriter(outputStream);
+            int count = 0;
+            while (xmlEventParser.peek() != null) {
+                XMLEvent event = xmlEventParser.peek();
+                if (event.isStartElement()) {
+                    count++;
+                    StartElement start = event.asStartElement();
+                    writer.writeStartElement(start.getName().getPrefix(), start.getName().getLocalPart(), start.getName().getNamespaceURI());
+
+                    Iterator<Namespace> it = start.getNamespaces();
+                    while (it.hasNext()) {
+                        Namespace n = it.next();
+                        writer.writeNamespace(n.getPrefix(), n.getNamespaceURI());
+                    }
+
+                    Iterator<Attribute> attrs = start.getAttributes();
+                    while (attrs.hasNext()) {
+                        Attribute attr = attrs.next();
+                        writer.writeAttribute(attr.getName().getPrefix(), attr.getName().getNamespaceURI(), attr.getName().getLocalPart(), attr.getValue());
+                    }
+
+                } else if (event.isEndElement()) {
+                    count--;
+                    if (count == 0) {
+                        break;
+                    } else writer.writeEndElement();
+                } else if (event.isCharacters()) {
+                    writer.writeCharacters(event.asCharacters().getData());
+                }
+
+                if (xmlEventParser.hasNext())
+                    xmlEventParser.nextEvent();
+                else
+                    break;
+            }
+
+            if (count > 0)
+                throw new XmlReaderException("Unterminated structure");
+
+            writer.flush();
+            writer.close();
+
+            return outputStream.toString();
+        } catch (XMLStreamException e) {
+            throw new XmlReaderException(e);
+        }
+    }
+
+    public static interface IslandParser<T> {
+        T parse (XmlReader reader) throws XmlReaderException;
     }
 }

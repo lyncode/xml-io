@@ -27,9 +27,11 @@ import java.io.OutputStream;
 public class XmlWriter implements XMLStreamWriter {
     private static XMLOutputFactory factory = XMLOutputFactory2.newFactory();
     private XMLStreamWriter writer;
+    private OutputStream outputStream;
 
     public XmlWriter(OutputStream output) throws XMLStreamException {
         writer = factory.createXMLStreamWriter(output);
+        this.outputStream = output;
     }
 
     @Override
@@ -190,5 +192,9 @@ public class XmlWriter implements XMLStreamWriter {
     @Override
     public Object getProperty(String name) throws IllegalArgumentException {
         return writer.getProperty(name);
+    }
+
+    public OutputStream getOutputStream() {
+        return outputStream;
     }
 }
